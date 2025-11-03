@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Micro-Nintendo — Demo</title>
+<style>
+body { font-family: "Segoe UI", sans-serif; background: #eef2f7; margin: 40px; text-align: center; }
+h1 { color: #e60012; }
+#gameCanvas { background: #fff; border: 3px solid #e60012; cursor: pointer; margin-top: 20px; }
+button { margin-top: 10px; padding: 6px 12px; }
+table { margin: 20px auto; border-collapse: collapse; width: 300px; }
+th, td { border: 1px solid #ccc; padding: 6px; }
+</style>
+</head>
+<body>
+<h1>Micro-Nintendo — Coin Catcher</h1>
+
+<div>
+  Usuario: <input id="user" placeholder="player1" value="player1">
+  Clave: <input id="pass" type="password" value="123">
+  <button onclick="login()">Login</button>
+</div>
+
+<h3 id="gameTitle"></h3>
+<canvas id="gameCanvas" width="400" height="400"></canvas>
+
+<h3>Tabla de puntuaciones</h3>
+<table id="scoreTable">
+  <tr><th>Jugador</th><th>Puntuación</th></tr>
+</table>
+
+<script>
+const userInput = document.getElementById('user');
+const passInput = document.getElementById('pass');
+const gameCanvas = document.getElementById('gameCanvas');
+const gameTitle = document.getElementById('gameTitle');
+const scoreTable = document.getElementById('scoreTable');
+
+let user = null;
+let ctx = gameCanvas.getContext("2d");
+let gameActive = false, score = 0, player, coin, bomb;
+
+function login() {
+  fetch("http://localhost:8001/login", {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({username: userInput.value, password: passInput.value})
+  }).then(r => r.json()).then(res => {
+    if (res.ok) {
+      user = res.user;
+      loadGame();
+    } else alert("Error de login");
+  }).catch(()=>alert("Error de red al intentar logear"));
+}
+
+function loadGame() {
+  fetch("http://localhost:8002/games").then(r=>r.json()).then(games=>{
+    gameTitle.textContent = games[0].title + " — " + games[0].description;
+  });
+  fetchScores();
+}
+
+function fetchScores() {
+  fetch("http://localhost:8003/scores").then(r=>r.json()).then(data=>{
+    let rows = "<tr><th>Jugador</th><th>Puntuación</th></tr>";
+    data.forEach(s => rows += `<tr><td>${s.user}</td><td>${s.score}</td></tr>`);
+    scoreTable.innerHTML = rows;
+  });
+}
+
+gameCanvas.addEventListener("click", () => {
+  if (!user) { alert("Inicia sesión primero"); return; }
+  if (!gameActive) startGame();
+});
+
+function startGame() {
+  gameActive = true;
+  score = 0;
+  player = {x: 180, y: 360, size: 20};
+  coin = {x: Math.random()*380, y: 0, size: 10};
+  bomb = {x: Math.random()*380, y: -200, size: 15};
+  requestAnimationFrame(loop);
+}
+
+function loop() {
+  if (!gameActive) return;
+  ctx.clearRect(0,0,400,400);
+
+  ctx.fillStyle="gold";
+  ctx.beginPath();
+  ctx.arc(coin.x, coin.y, coin.size, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle="red";
+  ctx.beginPath();
+  ctx.arc(bomb.x, bomb.y, bomb.size, 0, Math.PI*2); ctx.fill();
+
+  ctx.fillStyle="blue";
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+
+  coin.y += 3; bomb.y += 5;
+  if (coin.y>400) { coin.y=0; coin.x=Math.random()*380; }
+  if (bomb.y>400) { bomb.y=0; bomb.x=Math.random()*380; }
+
+  if (Math.abs(player.x-coin.x)<20 && Math.abs(player.y-coin.y)<20) {
+    score++; coin.y=0; coin.x=Math.random()*380;
+  }
+  if (Math.abs(player.x-bomb.x)<20 && Math.abs(player.y-bomb.y)<20) {
+    gameActive=false;
+    alert(`Perdiste! Puntuación: ${score}`);
+    fetch("http://localhost:8003/score", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({user, score})
+    }).then(()=>fetchScores());
+    return;
+  }
+
+  ctx.fillStyle="black";
+  ctx.fillText("Score: "+score, 10, 20);
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener("keydown", e=>{
+  if(!gameActive) return;
+  if(e.key==="ArrowLeft" && player.x>0) player.x-=20;
+  if(e.key==="ArrowRight" && player.x<380) player.x+=20;
+});
+</script>
+</body>
+</html>

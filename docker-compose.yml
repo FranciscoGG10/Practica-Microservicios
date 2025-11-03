@@ -1,0 +1,20 @@
+services:
+  auth_service:
+    build: ./auth_service
+    ports:
+      - "8001:8001"
+
+  game_service:
+    build: ./game_service
+    ports:
+      - "8002:8002"
+
+  score_service:
+    build: ./score_service
+    ports:
+      - "8003:8003"
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
