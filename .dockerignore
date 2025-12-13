@@ -1,0 +1,23 @@
+# Ignore Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore Dockerfile and docker-compose.yml
+Dockerfile
+docker-compose.yml
+
+# Ignore Azure pipeline files
+azure-pipelines.yml
+
+# Ignore infrastructure files
+infra/
+
+# Ignore any local environment files
+.env
+*.local
+
+# Ignore any other files that are not needed in the Docker image
+README.md
+*.md
+*.txt
