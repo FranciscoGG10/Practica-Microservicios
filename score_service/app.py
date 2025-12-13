@@ -13,4 +13,5 @@ def save_score(data: dict):
 
 @app.get("/scores")
 def get_scores():
+    # Ordenar por puntaje descendente
     return sorted(scores, key=lambda x: x["score"], reverse=True)

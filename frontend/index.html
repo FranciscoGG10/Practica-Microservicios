@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Micro-Nintendo — Demo</title>
+<script src="env-config.js"></script>
 <style>
 body { font-family: "Segoe UI", sans-serif; background: #eef2f7; margin: 40px; text-align: center; }
 h1 { color: #e60012; }
@@ -30,6 +31,11 @@ th, td { border: 1px solid #ccc; padding: 6px; }
 </table>
 
 <script>
+// USAR VARIABLES DE ENTORNO O DEFAULT A LOCALHOST
+const API_AUTH = window.env?.AUTH_URL || "http://localhost:8001";
+const API_GAME = window.env?.GAME_URL || "http://localhost:8002";
+const API_SCORE = window.env?.SCORE_URL || "http://localhost:8003";
+
 const userInput = document.getElementById('user');
 const passInput = document.getElementById('pass');
 const gameCanvas = document.getElementById('gameCanvas');
@@ -41,7 +47,7 @@ let ctx = gameCanvas.getContext("2d");
 let gameActive = false, score = 0, player, coin, bomb;
 
 function login() {
-  fetch("http://localhost:8001/login", {
+  fetch(`${API_AUTH}/login`, {
     method: "POST", headers: {"Content-Type": "application/json"},
     body: JSON.stringify({username: userInput.value, password: passInput.value})
   }).then(r => r.json()).then(res => {
@@ -49,18 +55,18 @@ function login() {
       user = res.user;
       loadGame();
     } else alert("Error de login");
-  }).catch(()=>alert("Error de red al intentar logear"));
+  }).catch(e => { console.error(e); alert("Error de red"); });
 }
 
 function loadGame() {
-  fetch("http://localhost:8002/games").then(r=>r.json()).then(games=>{
+  fetch(`${API_GAME}/games`).then(r=>r.json()).then(games=>{
     gameTitle.textContent = games[0].title + " — " + games[0].description;
   });
   fetchScores();
 }
 
 function fetchScores() {
-  fetch("http://localhost:8003/scores").then(r=>r.json()).then(data=>{
+  fetch(`${API_SCORE}/scores`).then(r=>r.json()).then(data=>{
     let rows = "<tr><th>Jugador</th><th>Puntuación</th></tr>";
     data.forEach(s => rows += `<tr><td>${s.user}</td><td>${s.score}</td></tr>`);
     scoreTable.innerHTML = rows;
@@ -85,28 +91,23 @@ function loop() {
   if (!gameActive) return;
   ctx.clearRect(0,0,400,400);
 
-  ctx.fillStyle="gold";
-  ctx.beginPath();
-  ctx.arc(coin.x, coin.y, coin.size, 0, Math.PI*2); ctx.fill();
-
-  ctx.fillStyle="red";
-  ctx.beginPath();
-  ctx.arc(bomb.x, bomb.y, bomb.size, 0, Math.PI*2); ctx.fill();
-
-  ctx.fillStyle="blue";
-  ctx.fillRect(player.x, player.y, player.size, player.size);
+  // Dibujo simple
+  ctx.fillStyle="gold"; ctx.beginPath(); ctx.arc(coin.x, coin.y, coin.size, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle="red"; ctx.beginPath(); ctx.arc(bomb.x, bomb.y, bomb.size, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle="blue"; ctx.fillRect(player.x, player.y, player.size, player.size);
 
   coin.y += 3; bomb.y += 5;
   if (coin.y>400) { coin.y=0; coin.x=Math.random()*380; }
   if (bomb.y>400) { bomb.y=0; bomb.x=Math.random()*380; }
 
+  // Colisiones
   if (Math.abs(player.x-coin.x)<20 && Math.abs(player.y-coin.y)<20) {
     score++; coin.y=0; coin.x=Math.random()*380;
   }
   if (Math.abs(player.x-bomb.x)<20 && Math.abs(player.y-bomb.y)<20) {
     gameActive=false;
     alert(`Perdiste! Puntuación: ${score}`);
-    fetch("http://localhost:8003/score", {
+    fetch(`${API_SCORE}/score`, {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({user, score})
     }).then(()=>fetchScores());

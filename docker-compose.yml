@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   auth_service:
     build: ./auth_service
@@ -18,3 +19,9 @@ services:
     build: ./frontend
     ports:
       - "8080:80"
+    environment:
+      # Localmente, estas variables son opcionales porque el script 
+      # env.sh tiene valores por defecto a localhost, pero aquí las dejo explícitas:
+      - AUTH_URL=http://localhost:8001
+      - GAME_URL=http://localhost:8002
+      - SCORE_URL=http://localhost:8003
